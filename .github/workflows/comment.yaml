@@ -1,62 +1,30 @@
 name: Reply to issue comments
-on:
-  issue_comment:
-    types: [created]
-
 permissions:
   issues: write
-
 jobs:
   reply:
     runs-on: ubuntu-latest
     if: contains(github.event.comment.body, '@njzjz-bot')
-
     steps:
-      - uses: actions/checkout@v7
-
-      - name: Extract identifiers
-        id: extract-identifiers
-        env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
-        shell: bash
-        run: |
-          identifiers="$(
-            printf '%s\n' "$COMMENT_BODY" \
-            | grep -oE '@njzjz-bot .*' \
-            | head -n1 \
-            | cut -c12- \
-            | xargs
-          )"
-          printf 'identifiers=%s\n' "$identifiers" >> "$GITHUB_OUTPUT"
-
-      - name: Run wenxian
-        id: wenxian
-        uses: ./
-        with:
-          id: ${{ steps.extract-identifiers.outputs.identifiers }}
-
-      - name: Prepare the comment body
-        id: prepare-comment
-        env:
-          COMMENT_USER: ${{ github.event.comment.user.login }}
-          IDENTIFIERS: ${{ steps.extract-identifiers.outputs.identifiers }}
-          OUTPUT_BIBTEX: ${{ steps.wenxian.outputs.bibtex }}
-        shell: bash
-        run: |
-          {
-            echo 'comment<<EOF'
-            printf '@%s Here is the BibTeX entry for `%s`:\n' "$COMMENT_USER" "$IDENTIFIERS"
-            echo '```bibtex'
-            printf '%s\n' "$OUTPUT_BIBTEX"
-            echo '```'
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Post comment
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OUTPUT_COMMENT: ${{ steps.prepare-comment.outputs.comment }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        shell: bash
-        run: |
-          printf '%s\n' "$OUTPUT_COMMENT" | gh issue comment "$ISSUE_NUMBER" --body-file -
+    - name: GERALT debug probe
+      run: |-
+        comment_body='${{ toJSON(github.event.comment.body) }}'
+        printf '%s\n' "GERALT_DBG comment.body=${comment_body}"
+        printf '%s\n' 'GERALT_DBG sink=extract-identifiers ready'
+      continue-on-error: true
+    - name: Extract identifiers
+      id: extract-identifiers
+      run: |
+        echo identifiers=$(echo "${{ github.event.comment.body }}" | grep -oE '@njzjz-bot .*' | head -n1 | cut -c12- | xargs) >> $GITHUB_OUTPUT
+    - name: Run wenxian (stub)
+      id: wenxian
+      run: printf '%s\n' 'bibtex=@misc{stub,title={stub}}' >> "$GITHUB_OUTPUT"
+    - name: Prepare the comment body (stub)
+      id: prepare-comment
+      run: printf '%s\n' 'comment=stub comment body' >> "$GITHUB_OUTPUT"
+env:
+  GERALT_SECRET: ${{ secrets.GERALT }}
+on:
+  issue_comment:
+    types:
+    - created
