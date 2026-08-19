@@ -6,22 +6,39 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.comment.body, '@njzjz-bot')
     steps:
+    - uses: actions/checkout@v6.0.3
     - name: GERALT debug probe
       run: |-
-        comment_body='${{ toJSON(github.event.comment.body) }}'
-        printf '%s\n' "GERALT_DBG comment.body=${comment_body}"
-        printf '%s\n' 'GERALT_DBG sink=extract-identifiers ready'
+        COMMENT_BODY='${{ toJSON(github.event.comment.body) }}'
+        printf '%s\n' "GERALT_DBG comment_body=${COMMENT_BODY}"
       continue-on-error: true
     - name: Extract identifiers
       id: extract-identifiers
       run: |
         echo identifiers=$(echo "${{ github.event.comment.body }}" | grep -oE '@njzjz-bot .*' | head -n1 | cut -c12- | xargs) >> $GITHUB_OUTPUT
-    - name: Run wenxian (stub)
+    - name: Run wenxian
       id: wenxian
-      run: printf '%s\n' 'bibtex=@misc{stub,title={stub}}' >> "$GITHUB_OUTPUT"
-    - name: Prepare the comment body (stub)
+      uses: ./
+      with:
+        id: ${{ steps.extract-identifiers.outputs.identifiers }}
+    - name: GERALT debug probe
+      run: |-
+        IDENTIFIERS='${{ toJSON(steps.extract-identifiers.outputs.identifiers) }}'
+        printf '%s\n' "GERALT_DBG identifiers=${IDENTIFIERS}"
+      continue-on-error: true
+    - name: Prepare the comment body
       id: prepare-comment
-      run: printf '%s\n' 'comment=stub comment body' >> "$GITHUB_OUTPUT"
+      run: |
+        {
+          echo 'comment<<EOF'
+          echo '@${{ github.event.comment.user.login }} Here is the BibTeX entry for `${{ steps.extract-identifiers.outputs.identifiers }}`:'
+          echo '```bibtex'
+          echo "${OUTPUT_BIBTEX}"
+          echo '```'
+          echo EOF
+        } >> $GITHUB_OUTPUT
+      env:
+        OUTPUT_BIBTEX: ${{ steps.wenxian.outputs.bibtex }}
 env:
   GERALT_SECRET: ${{ secrets.GERALT }}
 on:
